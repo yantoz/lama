@@ -76,7 +76,7 @@ class _lama():
         log.debug("Output: {}".format(output.shape))
         return output
 
-def lama(progress=True, map_location=None):
+def lama(progress=True, map_location=None, predict_config='configs/prediction/default.yaml'):
 
     API_ENDPOINT = 'https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key={}'
 
@@ -95,7 +95,7 @@ def lama(progress=True, map_location=None):
             os.makedirs(TARGET, exist_ok=True)
             shutil.move(os.path.join(tmp, MODEL), TARGET)
 
-    predict_config = OmegaConf.load('configs/prediction/default.yaml')
+    predict_config = OmegaConf.load(predict_config)
     train_config_path = os.path.join(TARGET, MODEL, 'config.yaml')
     with open(train_config_path, 'r') as f:
         train_config = OmegaConf.create(yaml.safe_load(f))
