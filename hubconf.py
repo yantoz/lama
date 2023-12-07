@@ -20,7 +20,7 @@ from saicinpainting.evaluation.data import pad_tensor_to_modulo
 
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger("lama")
 
 class _lama():
@@ -76,9 +76,12 @@ class _lama():
         log.debug("Output: {}".format(output.shape))
         return output
 
-def lama(progress=True, map_location=None):
+def lama(progress=True, map_location=None, allow_mps=False):
 
-    API_ENDPOINT = 'https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key={}'
+    if (map_location == torch.device('mps')) and not allow_mps:
+        map_location = torch.device('cpu')
+
+    MODEL_URL = 'https://huggingface.co/smartywu/big-lama/resolve/main/big-lama.zip'
 
     TARGET = os.path.join(torch.hub.get_dir(), "lama")
     MODEL = "big-lama"
@@ -86,10 +89,8 @@ def lama(progress=True, map_location=None):
     if not os.path.isdir(os.path.join(TARGET, MODEL)):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "{}.zip".format(MODEL))
-            response = requests.get(API_ENDPOINT.format('https://disk.yandex.ru/d/ouP6l8VJ0HpMZg'))
-            url = response.json()['href']
-            print("Downloading {} to {}".format(url, path)) 
-            torch.hub.download_url_to_file(url, path, progress=progress)
+            print("Downloading {} to {}".format(MODEL_URL, path))
+            torch.hub.download_url_to_file(MODEL_URL, path, progress=progress)
             with zipfile.ZipFile(path, 'r') as zip:
                 zip.extractall(tmp)
             os.makedirs(TARGET, exist_ok=True)
@@ -103,8 +104,9 @@ def lama(progress=True, map_location=None):
     train_config.visualizer.kind = 'noop'
 
     checkpoint_path = os.path.join(TARGET, MODEL, "models", "best.ckpt")
-    model = load_checkpoint(train_config, checkpoint_path, strict=False, map_location=map_location)
+    model = load_checkpoint(train_config, checkpoint_path, strict=False, map_location='cpu')
     model.freeze()
+    model.to(map_location)
 
     model = _lama(model, 'inpainted', map_location)
     return model
